@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YouTube 日語直播三段式字幕機 (電腦+手機相容版)</title>
+<style>
+:root {
+--bg: #101216;
+--card: #1b1e24;
+--accent: #00ffcc;
+--mobile: #ff9900;
+--polish: #ffd700;
+--text: #eaeaea;
+--sub: #9aa0a6;
+}
+* { box-sizing: border-box; }
+body {
+margin: 0; padding: 14px;
+background: var(--bg); color: var(--text);
+font-family: "Microsoft JhengHei UI", "Meiryo UI", sans-serif;
+display: flex; flex-direction: column; align-items: center;
+}
+.container { width: 100%; max-width: 940px; }
+h1 { font-size: 19px; margin: 0 0 12px 0; color: var(--accent); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.panel {
+background: var(--card); padding: 14px; border-radius: 10px;
+margin-bottom: 12px; border: 1px solid #2d323b;
+}
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+.row:last-child { margin-bottom: 0; }
+label { font-size: 12px; color: var(--sub); display: block; margin-bottom: 4px; }
+input[type="password"], input[type="text"], input[type="number"], select, textarea {
+width: 100%; background: #262a33; border: 1px solid #3d4452; color: #fff;
+padding: 8px 10px; border-radius: 6px; font-size: 13px;
+}
+textarea { height: 54px; resize: vertical; font-family: inherit; }
+button {
+background: var(--accent); color: #000; border: none;
+padding: 10px 14px; border-radius: 6px; font-weight: bold;
+cursor: pointer; font-size: 13px; transition: opacity 0.2s;
+}
+button:hover { opacity: 0.85; }
+button:disabled { background: #444 !important; color: #888 !important; cursor: not-allowed; }
+button.mobile-btn { background: var(--mobile); color: #000; }
+button.danger { background: #ff5555; color: #fff; }
+button.secondary { background: #323844; color: #fff; }
+
+/* 狀態指示燈 */
+.pipeline-bar {
+display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-top: 8px; font-size: 12px;
+}
+.badge {
+padding: 4px 9px; border-radius: 20px; background: #262a33; color: #aaa; border: 1px solid #3a3f4b;
+}
+.badge.active { background: rgba(0, 255, 204, 0.15); color: var(--accent); border-color: var(--accent); }
+.badge.polish { background: rgba(255, 215, 0, 0.15); color: var(--polish); border-color: var(--polish); }
+.badge.error { background: rgba(255, 85, 85, 0.2); color: #ff7777; border-color: #ff5555; }
+
+/* 字幕顯示區 */
+#subtitle-wrapper { width: 100%; position: sticky; top: 8px; z-index: 10; }
+#subtitle-box {
+background: #090a0c; border: 1px solid #3a414e; border-radius: 10px;
+padding: 14px 18px; min-height: 150px;
+display: flex; flex-direction: column; justify-content: center;
+box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.sub-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: bold; vertical-align: middle; display: inline-block; margin-bottom: 2px; }
+.tag-ja { background: #333; color: #ccc; }
+.tag-gt { background: #1e3a5f; color: #66b2ff; }
+.tag-ai { background: #4d3d00; color: var(--polish); }
+
+.ja-line { font-size: 14px; color: #cccccc; margin-bottom: 8px; line-height: 1.45; word-break: break-word; }
+.zh-draft-line { font-size: 17px; color: #70c4ff; font-weight: bold; margin-bottom: 8px; line-height: 1.4; word-break: break-word; }
+.zh-polish-line { font-size: 20px; color: var(--polish); font-weight: bold; line-height: 1.45; word-break: break-word; }
+
+/* 歷史紀錄區 */
+.history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.history-box {
+max-height: 240px; overflow-y: auto; font-size: 13px;
+background: #14161b; padding: 10px; border-radius: 8px; border: 1px solid #262a33;
+}
+.history-item { padding: 8px 0; border-bottom: 1px solid #22262e; }
+.history-item:last-child { border-bottom: none; }
+.h-time { font-size: 11px; color: #666; margin-right: 6px; }
+.h-ja { color: #999; margin-bottom: 3px; }
+.h-gt { color: #66b2ff; font-size: 13px; }
+.h-ai { color: var(--polish); font-weight: bold; font-size: 14px; margin-top: 3px; }
+
+details summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: bold; margin-bottom: 10px; user-select: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>
+<span>🎙️ 日語直播三段式字幕機</span>
+<span style="font-size: 12px; color: var(--sub); font-weight: normal;">支援電腦分頁擷取 & 手機麥克風收音</span>
+</h1>
+
+<!-- 即時字幕區 (置頂方便手機觀看) -->
+<div id="subtitle-wrapper">
+<div id="subtitle-box">
+<div class="ja-line">
+<span class="sub-tag tag-ja">即時日文</span>
+<span id="jaText">電腦請點「電腦分頁擷取」；手機請點橘色「手機麥克風收音」</span>
+</div>
+<div class="zh-draft-line">
+<span class="sub-tag tag-gt">Google 初翻</span>
+<span id="zhDraftText">等待日文累積達標後自動翻譯...</span>
+</div>
+<div class="zh-polish-line">
+<span class="sub-tag tag-ai">AI 分流潤飾</span>
+<span id="zhPolishText">等待初翻累積達標後進行語氣分流與潤飾...</span>
+</div>
+</div>
+</div>
+
+<!-- 操作按鈕與狀態列 -->
+<div class="panel" style="margin-top: 12px;">
+<div class="row">
+<button id="startTabBtn">💻 電腦：選擇直播分頁開始</button>
+<button id="startMicBtn" class="mobile-btn">📱 手機/平板：用麥克風收音開始</button>
+<button id="stopBtn" class="danger" disabled>⏹ 停止</button>
+<button id="pipBtn" class="secondary">❐ 電腦置頂小窗</button>
+</div>
+<div class="pipeline-bar">
+<span class="badge" id="badgeJa">1. 日文聽寫: 待機</span>
+<span class="badge" id="badgeGt">2. Google初翻: 待機</span>
+<span class="badge" id="badgeAi">3. AI潤飾: 待機</span>
+</div>
+</div>
+
+<!-- 摺疊設定面板 (手機上可收合不佔空間) -->
+<div class="panel">
+<details open id="settingsDetails">
+<summary>⚙️ 展開 / 收合 API 金鑰與流水線參數設定</summary>
+
+<div class="row" style="margin-top: 8px;">
+<div style="flex: 1; min-width: 220px;">
+<label>1. Groq API Key (必填，負責極速日文聽寫 + 潤飾)</label>
+<input type="password" id="groqKeyInput" placeholder="貼上 gsk_... 開頭的金鑰" />
+</div>
+<div style="flex: 1; min-width: 220px;">
+<label>2. Gemini API Key (選填，負責階段三潤飾)</label>
+<input type="password" id="geminiKeyInput" placeholder="貼上 AIzaSy... 開頭的金鑰" />
+</div>
+<div style="width: 100%; max-width: 200px;">
+<label>階段三 AI 潤飾引擎</label>
+<select id="polishEngineSelect">
+<option value="groq_first">Groq 優先 (推薦)</option>
+<option value="gemini_first">Gemini 優先 (超額轉 Groq)</option>
+</select>
+</div>
+</div>
+
+<div class="grid-3">
+<div>
+<label>⚡ 日文翻新率 (秒)</label>
+<input type="number" id="jaIntervalInput" value="3.5" step="0.5" min="2.0" max="10.0" />
+</div>
+<div>
+<label>🌐 中文初翻週期 (秒)</label>
+<input type="number" id="zhIntervalInput" value="13.0" step="1.0" min="5.0" max="30.0" />
+</div>
+<div>
+<label>✨ 潤飾門檻 (累積幾次初翻)</label>
+<input type="number" id="polishBatchInput" value="2" step="1" min="1" max="5" />
+</div>
+<div>
+<label>👥 目前直播交談人數</label>
+<select id="speakerCountSelect">
+<option value="1">1 人 (單人)</option>
+<option value="2">2 人 (雙人連動)</option>
+<option value="3">3 人 (三人連動)</option>
+<option value="4" selected>4 人 (四人連動)</option>
+<option value="5">5 人以上 (多人大型連動)</option>
+</select>
+</div>
+<div>
+<label>🎵 語氣助詞斷句敏感度</label>
+<select id="toneSplitSelect">
+<option value="high" selected>高 (依句尾助詞與微停頓)</option>
+<option value="normal">標準 (依時間軸停頓)</option>
+</select>
+</div>
+<div>
+<label>Gemini 模型名稱</label>
+<input type="text" id="geminiModelInput" value="gemini-3.8-flash" />
+</div>
+</div>
+
+<div class="row">
+<div style="flex: 1;">
+<label>📖 專屬術語表 / 連動成員名字與第一人稱對照</label>
+<textarea id="glossaryInput">スパチャ -> SC / 斗內
+初見 -> 初見
+枠 -> 直播台
+推し -> 推</textarea>
+</div>
+</div>
+
+<div class="row">
+<button id="saveBtn" class="secondary" style="width: 100%;">💾 儲存所有設定至本機瀏覽器</button>
+</div>
+</details>
+</div>
+
+<!-- 歷史紀錄 -->
+<div class="panel">
+<div class="history-header">
+<label style="margin:0;">📜 逐字稿與潤飾對照紀錄</label>
+<button id="exportBtn" class="secondary" style="padding: 4px 10px; font-size: 12px;">📥 匯出 TXT</button>
+</div>
+<div class="history-box" id="historyBox"></div>
+</div>
+</div>
+
+<script>
+const groqKeyInput = document.getElementById('groqKeyInput');
+const geminiKeyInput = document.getElementById('geminiKeyInput');
+const polishEngineSelect = document.getElementById('polishEngineSelect');
+const jaIntervalInput = document.getElementById('jaIntervalInput');
+const zhIntervalInput = document.getElementById('zhIntervalInput');
+const polishBatchInput = document.getElementById('polishBatchInput');
+const speakerCountSelect = document.getElementById('speakerCountSelect');
+const toneSplitSelect = document.getElementById('toneSplitSelect');
+const geminiModelInput = document.getElementById('geminiModelInput');
+const glossaryInput = document.getElementById('glossaryInput');
+
+const startTabBtn = document.getElementById('startTabBtn');
+const startMicBtn = document.getElementById('startMicBtn');
+const stopBtn = document.getElementById('stopBtn');
+const pipBtn = document.getElementById('pipBtn');
+const saveBtn = document.getElementById('saveBtn');
+const exportBtn = document.getElementById('exportBtn');
+const settingsDetails = document.getElementById('settingsDetails');
+
+const badgeJa = document.getElementById('badgeJa');
+const badgeGt = document.getElementById('badgeGt');
+const badgeAi = document.getElementById('badgeAi');
+
+const jaText = document.getElementById('jaText');
+const zhDraftText = document.getElementById('zhDraftText');
+const zhPolishText = document.getElementById('zhPolishText');
+const historyBox = document.getElementById('historyBox');
+const subtitleBox = document.getElementById('subtitle-box');
+const subtitleWrapper = document.getElementById('subtitle-wrapper');
+
+let mediaStream = null;
+let audioContext = null;
+let analyser = null;
+let isRunning = false;
+let wakeLock = null;
+
+let jaTimer = null;
+let gtTimer = null;
+let gtCountdownTimer = null;
+let gtRemainingSec = 0;
+
+let jaBufferForGt = [];
+let draftBufferForAi = [];
+let recentPolishedContext = [];
+let fullTranscriptLog = [];
+
+window.addEventListener('DOMContentLoaded', () => {
+const fields = [
+['groqKeyInput', 'yt_pipe_groq_key'],
+['geminiKeyInput', 'yt_pipe_gemini_key'],
+['polishEngineSelect', 'yt_pipe_polish_engine'],
+['jaIntervalInput', 'yt_pipe_ja_sec'],
+['zhIntervalInput', 'yt_pipe_zh_sec'],
+['polishBatchInput', 'yt_pipe_polish_batch'],
+['speakerCountSelect', 'yt_pipe_speakers'],
+['toneSplitSelect', 'yt_pipe_tone'],
+['geminiModelInput', 'yt_pipe_gemini_model'],
+['glossaryInput', 'yt_pipe_glossary']
+];
+fields.forEach(([id, key]) => {
+const val = localStorage.getItem(key);
+if (val !== null) document.getElementById(id).value = val;
+});
+
+// 若已存有 Key，在手機小螢幕上自動收合設定區以便看字幕
+if (localStorage.getItem('yt_pipe_groq_key') && window.innerWidth < 768) {
+settingsDetails.removeAttribute('open');
+}
+});
+
+function saveSettings() {
+localStorage.setItem('yt_pipe_groq_key', groqKeyInput.value.trim());
+localStorage.setItem('yt_pipe_gemini_key', geminiKeyInput.value.trim());
+localStorage.setItem('yt_pipe_polish_engine', polishEngineSelect.value);
+localStorage.setItem('yt_pipe_ja_sec', jaIntervalInput.value);
+localStorage.setItem('yt_pipe_zh_sec', zhIntervalInput.value);
+localStorage.setItem('yt_pipe_polish_batch', polishBatchInput.value);
+localStorage.setItem('yt_pipe_speakers', speakerCountSelect.value);
+localStorage.setItem('yt_pipe_tone', toneSplitSelect.value);
+localStorage.setItem('yt_pipe_gemini_model', geminiModelInput.value.trim());
+localStorage.setItem('yt_pipe_glossary', glossaryInput.value);
+}
+
+saveBtn.addEventListener('click', () => {
+saveSettings();
+badgeJa.className = 'badge active';
+badgeJa.innerText = '✅ 設定已儲存！';
+});
+
+// 取得手機螢幕恆亮鎖定
+async function requestWakeLock() {
+if ('wakeLock' in navigator) {
+try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+}
+
+// 模式 A：電腦分頁音訊擷取
+startTabBtn.addEventListener('click', async () => {
+if (!groqKeyInput.value.trim()) {
+alert('請先展開下方設定，填入 Groq API Key！');
+settingsDetails.setAttribute('open', 'true');
+return;
+}
+if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+badgeJa.className = 'badge error';
+badgeJa.innerText = '⚠️ 手機瀏覽器不支援分頁擷取，請點橘色「用麥克風收音開始」按鈕！';
+alert('手機系統不支援「電腦分頁擷取」，請改點旁邊橘色的「📱 手機/平板：用麥克風收音開始」！');
+return;
+}
+saveSettings();
+
+try {
+mediaStream = await navigator.mediaDevices.getDisplayMedia({
+video: true,
+audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+});
+
+const audioTracks = mediaStream.getAudioTracks();
+if (audioTracks.length === 0) {
+mediaStream.getTracks().forEach(t => t.stop());
+alert('未偵測到音訊！請在選擇分頁時勾選左下角的「一併分享分頁音訊」。');
+return;
+}
+mediaStream.getVideoTracks().forEach(t => t.stop());
+initAudioPipeline(new MediaStream(audioTracks), '電腦分頁音訊');
+} catch (err) {
+badgeJa.className = 'badge error';
+badgeJa.innerText = 擷取取消或失敗: ${err.message}`;
+}
+});
+
+// 模式 B：手機/平板麥克風收音 (關閉回音消除與降噪以利收取喇叭聲)
+startMicBtn.addEventListener('click', async () => {
+if (!groqKeyInput.value.trim()) {
+alert('請先展開下方設定，填入 Groq API Key！');
+settingsDetails.setAttribute('open', 'true');
+return;
+}
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+alert('無法啟動麥克風！請確認您的網址是 https:// 開頭（例如放在 GitHub Pages 上）。');
+return;
+}
+saveSettings();
+
+try {
+mediaStream = await navigator.mediaDevices.getUserMedia({
+audio: {
+echoCancellation: false,
+noiseSuppression: false,
+autoGainControl: true
+},
+video: false
+});
+await requestWakeLock();
+if (window.innerWidth < 768) settingsDetails.removeAttribute('open');
+initAudioPipeline(mediaStream, '手機麥克風');
+} catch (err) {
+badgeJa.className = 'badge error';
+badgeJa.innerText = 麥克風權限拒絕或失敗:${err.message}`;
+alert('無法取得麥克風權限，請允許瀏覽器使用麥克風！');
+}
+});
+
+// 共用流水線初始化
+function initAudioPipeline(stream, sourceLabel) {
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+audioContext = new AudioCtx();
+if (audioContext.state === 'suspended') audioContext.resume();
+
+const source = audioContext.createMediaStreamSource(stream);
+analyser = audioContext.createAnalyser();
+analyser.fftSize = 512;
+source.connect(analyser);
+
+isRunning = true;
+startTabBtn.disabled = true;
+startMicBtn.disabled = true;
+stopBtn.disabled = false;
+jaBufferForGt = [];
+draftBufferForAi = [];
+
+jaText.innerText = [${sourceLabel}] 正在聆聽日語音訊...`;
+badgeJa.className = 'badge active';
+badgeJa.innerText = '1. 日文: 監聽中';
+
+stream.getAudioTracks()[0].onended = () => stopPipeline();
+
+startStage1JaLoop(stream);
+startStage2GtLoop();
+}
+
+stopBtn.addEventListener('click', stopPipeline);
+
+function stopPipeline() {
+isRunning = false;
+clearTimeout(jaTimer);
+clearInterval(gtTimer);
+clearInterval(gtCountdownTimer);
+if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+if (audioContext) audioContext.close();
+if (wakeLock) { wakeLock.release(); wakeLock = null; }
+startTabBtn.disabled = false;
+startMicBtn.disabled = false;
+stopBtn.disabled = true;
+badgeJa.className = 'badge';
+badgeJa.innerText = '1. 日文: 已停止';
+}
+
+// 自動挑選相容 iOS Safari 與 Android Chrome 的錄音格式
+function getSupportedAudioMime() {
+const types = [
+{ mime: 'audio/webm;codecs=opus', ext: 'webm' },
+{ mime: 'audio/webm', ext: 'webm' },
+{ mime: 'audio/mp4', ext: 'm4a' },
+{ mime: 'audio/aac', ext: 'aac' }
+ ];
+for (const t of types) {
+if (window.MediaRecorder && MediaRecorder.isTypeSupported(t.mime)) return t;
+}
+return { mime: '', ext: 'webm' };
+}
+
+// =========================================================================
+// Stage 1: Groq Whisper 極速日文聽寫 + 語氣斷句
+// =========================================================================
+function startStage1JaLoop(stream) {
+if (!isRunning) return;
+
+const jaSec = parseFloat(jaIntervalInput.value) || 3.5;
+const formatInfo = getSupportedAudioMime();
+const recorder = formatInfo.mime
+? new MediaRecorder(stream, { mimeType: formatInfo.mime })
+: new MediaRecorder(stream);
+
+const chunks = [];
+let maxRms = 0;
+
+const dataArray = new Float32Array(analyser.fftSize);
+const rmsCheck = setInterval(() => {
+if (!isRunning) return;
+analyser.getFloatTimeDomainData(dataArray);
+let sum = 0;
+for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+const rms = Math.sqrt(sum / dataArray.length);
+if (rms > maxRms) maxRms = rms;
+}, 120);
+
+recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+recorder.onstop = () => {
+clearInterval(rmsCheck);
+// 手機麥克風收音時門檻稍微放寬 (0.0025)
+if (chunks.length > 0 && maxRms > 0.0025) {
+const blob = new Blob(chunks, { type: formatInfo.mime || 'audio/webm' });
+recognizeJapaneseWithTone(blob, formatInfo.ext);
+} else {
+badgeJa.className = 'badge';
+badgeJa.innerText = '1. 日文: 靜音略過';
+}
+};
+
+recorder.start();
+jaTimer = setTimeout(() => {
+if (recorder.state === 'recording') recorder.stop();
+if (isRunning) startStage1JaLoop(stream);
+}, jaSec * 1000);
+}
+
+function formatJapaneseByTone(segments, rawText) {
+let text = '';
+if (segments && segments.length > 0) {
+for (let i = 0; i < segments.length; i++) {
+const seg = segments[i].text.trim();
+if (!seg) continue;
+text += seg;
+const nextSeg = segments[i + 1];
+if (nextSeg && (nextSeg.start - segments[i].end > 0.25)) {
+text += ' / ';
+} else {
+text += ' ';
+}
+}
+} else {
+text = rawText;
+}
+
+if (toneSplitSelect.value === 'high') {
+text = text.replace(/(だよね|ですね|ますね|ましたね|かな|かも|じゃん|でしょ|ますよ|ですよ|だなぁ|だな|わよ|のよ|かい|だい)(?![、。！？/])/g, '`$1、');
+}
+return text.trim();
+}
+
+async function recognizeJapaneseWithTone(audioBlob, ext) {
+const groqKey = groqKeyInput.value.split(',')[0].trim();
+const speakerCount = parseInt(speakerCountSelect.value) || 1;
+const hallucinations = ['ご視聴ありがとうございました', 'ありがとうございました', 'チャンネル登録', '字幕'];
+
+try {
+badgeJa.className = 'badge active';
+badgeJa.innerText = '1. 日文: 聽寫中...';
+
+const formData = new FormData();
+formData.append('file', audioBlob, chunk.${ext}`);
+formData.append('model', 'whisper-large-v3-turbo');
+formData.append('language', 'ja');
+formData.append('response_format', 'verbose_json');
+if (speakerCount > 1) {
+formData.append('prompt', '複数人の会話、雑談コラボ配信。相槌や語尾のニュアンスを正確に書き起こす。');
+}
+
+const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+method: 'POST',
+headers: { 'Authorization': Bearer${groqKey}` },
+body: formData
+});
+
+if (!res.ok) throw new Error(res.statusText);
+const data = await res.json();
+const rawJa = (data.text || '').trim();
+
+if (!rawJa || rawJa.length < 2 || hallucinations.some(h => rawJa.includes(h))) {
+badgeJa.className = 'badge';
+badgeJa.innerText = '1. 日文: 監聽中';
+return;
+}
+
+const formattedJa = formatJapaneseByTone(data.segments, rawJa);
+jaBufferForGt.push(formattedJa);
+jaText.innerText = jaBufferForGt.slice(-2).join(' ｜ ');
+
+badgeJa.className = 'badge active';
+badgeJa.innerText = 1. 日文: 已累積 ${jaBufferForGt.length} 句`;
+} catch (err) {
+console.error('Stage 1 Error:', err);
+badgeJa.className = 'badge error';
+badgeJa.innerText = '1. 日文: API 異常';
+}
+}
+
+// =========================================================================
+// Stage 2: Google 累積初翻 (預設每 13 秒)
+// =========================================================================
+function startStage2GtLoop() {
+const zhSec = parseFloat(zhIntervalInput.value) || 13.0;
+gtRemainingSec = zhSec;
+
+gtCountdownTimer = setInterval(() => {
+if (!isRunning) return;
+gtRemainingSec = Math.max(0, +(gtRemainingSec - 1).toFixed(1));
+badgeGt.innerText = 2. Google初翻:${gtRemainingSec}s`;
+}, 1000);
+
+gtTimer = setInterval(async () => {
+if (!isRunning) return;
+gtRemainingSec = parseFloat(zhIntervalInput.value) || 13.0;
+
+if (jaBufferForGt.length === 0) return;
+
+const combinedJa = jaBufferForGt.join(' ');
+jaBufferForGt = [];
+
+try {
+badgeGt.className = 'badge active';
+badgeGt.innerText = '2. Google初翻: 翻譯中...';
+
+const url = https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=zh-TW&dt=t&q=${encodeURIComponent(combinedJa)}`;
+const res = await fetch(url);
+const data = await res.json();
+const gtZh = data[0].map(item => item[0]).join('');
+
+zhDraftText.innerText = gtZh;
+const historyDom = createHistoryItem(combinedJa, gtZh);
+
+draftBufferForAi.push({ ja: combinedJa, gt: gtZh, dom: historyDom });
+const targetBatch = parseInt(polishBatchInput.value) || 2;
+badgeAi.innerText = 3. AI潤飾:${draftBufferForAi.length}/${targetBatch};
+
+if (draftBufferForAi.length >= targetBatch) {
+const batchToPolish = [...draftBufferForAi];
+draftBufferForAi = [];
+runStage3AiPolish(batchToPolish);
+}
+} catch (err) {
+console.error('Stage 2 GT Error:', err);
+}
+}, zhSec * 1000);
+}
+
+// =========================================================================
+// Stage 3: AI 深度潤飾 + 多人語氣分流
+// =========================================================================
+async function runStage3AiPolish(batch) {
+const speakerCount = parseInt(speakerCountSelect.value) || 4;
+const glossary = glossaryInput.value.trim();
+const contextStr = recentPolishedContext.slice(-2).join('\n');
+
+const rawJaBlock = batch.map((b, idx) => [段落${idx + 1} 日文]: latex
+{b.ja}`).join('\n'); const rawGtBlock = batch.map((b, idx) =&gt; `[段落
+
+{idx + 1} 初翻]: ${b.gt}).join('\n');
+
+const speakerInstruction = speakerCount > 1
+? 目前直播為 **${speakerCount}人交談/連動**，請根據日文的語氣助詞（敬語/半語、句尾詞、稱呼與對答邏輯），自動拆解並標註說話者代號（例如 [A]、[B] 或實況主名字），讓觀眾看懂多人對話。:目前為 1 人單人直播，請整理為流暢連貫的台灣繁體中文口語。`;
+
+const systemPrompt = 你是專業的日本直播同步口譯潤飾專家。請根據「日文原文」與「Google 初翻」，修正同音錯字與機翻生硬處，輸出自然道地的台灣繁體中文字幕。 ${speakerInstruction}
+規則：嚴格只輸出潤飾後的最終繁體中文台詞，不要加任何解釋。
+
+【專屬術語與成員表】
+`${glossary}
+
+【前文脈絡】
+${contextStr};
+
+const userPrompt = ``${rawJaBlock}\n\n${rawGtBlock}\n\n請輸出合併潤飾並分流說話者後的台灣繁體中文：;
+
+badgeAi.className = 'badge polish';
+badgeAi.innerText = '3. AI潤飾: 處理中...';
+
+let polishedText = '';
+const preferGemini = polishEngineSelect.value === 'gemini_first' && geminiKeyInput.value.trim() !== '';
+
+try {
+if (preferGemini) {
+try {
+polishedText = await callGeminiTextPolish(systemPrompt, userPrompt);
+} catch (geminiErr) {
+polishedText = await callGroqTextPolish(systemPrompt, userPrompt);
+}
+} else {
+polishedText = await callGroqTextPolish(systemPrompt, userPrompt);
+}
+
+if (polishedText) {
+zhPolishText.innerText = polishedText;
+recentPolishedContext.push(polishedText);
+if (recentPolishedContext.length > 3) recentPolishedContext.shift();
+
+const lastItem = batch[batch.length - 1];
+if (lastItem && lastItem.dom) {
+const aiDiv = lastItem.dom.querySelector('.h-ai');
+if (aiDiv) aiDiv.innerText = ✨ AI 潤飾 (${speakerCount}人)：latex
+{polishedText}`; } fullTranscriptLog.push({ time: new Date().toLocaleTimeString(), ja: batch.map(b =&gt; b.ja).join(' '), gt: batch.map(b =&gt; b.gt).join(' '), ai: polishedText }); } } catch (err) { zhPolishText.innerText = `[潤飾異常: 
+
+{err.message}]; } finally { const targetBatch = parseInt(polishBatchInput.value) || 2; badgeAi.className = 'badge'; badgeAi.innerText =3. AI潤飾: {targetBatch}`;
+}
+}
+
+async function callGroqTextPolish(sysPrompt, usrPrompt) {
+const groqKey = groqKeyInput.value.split(',')[0].trim();
+const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+method: 'POST',
+headers: { 'Authorization': Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+body: JSON.stringify({
+model: 'llama-3.3-70b-versatile',
+temperature: 0.25,
+messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: usrPrompt }]
+})
+});
+if (!res.ok) throw new Error((await res.json()).error?.message || res.statusText);
+return ((await res.json()).choices?.[0]?.message?.content || '').trim();
+}
+
+async function callGeminiTextPolish(sysPrompt, usrPrompt) {
+const geminiKey = geminiKeyInput.value.split(',')[0].trim();
+const model = geminiModelInput.value.trim() || 'gemini-3.8-flash';
+const url = https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=latex
+{geminiKey}`; const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `
+
+{sysPrompt}\n\n${usrPrompt} }] }],
+generationConfig: { temperature: 0.25 }
+})
+});
+if (!res.ok) throw new Error((await res.json()).error?.message || res.statusText);
+return ((await res.json()).candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+}
+
+function createHistoryItem(ja, gt) {
+const timeStr = new Date().toLocaleTimeString();
+const item = document.createElement('div');
+item.className = 'history-item';
+item.innerHTML = &lt;div class="h-ja"&gt;&lt;span class="h-time"&gt;[${timeStr}]</span>{gt}</div>
+<div class="h-ai"></div>
+`;
+historyBox.prepend(item);
+while (historyBox.children.length > 40) historyBox.removeChild(historyBox.lastChild);
+return item;
+}
+
+exportBtn.addEventListener('click', () => {
+if (fullTranscriptLog.length === 0) return alert('尚無紀錄可匯出！');
+const lines = fullTranscriptLog.map(item =>
+[${item.time}]\n日文：${item.ja}\n初翻：${item.gt}\n潤飾：${item.ai}\n----------------------------------------
+).join('\n');
+const a = document.createElement('a');
+a.href = URL.createObjectURL(new Blob([lines], { type: 'text/plain;charset=utf-8' }));
+a.download = YT直播字幕_${new Date().toISOString().slice(0,10)}.txt;
+a.click();
+});
+
+pipBtn.addEventListener('click', async () => {
+if (!('documentPictureInPicture' in window)) {
+alert('手機不支援子母畫面視窗，請直接使用網頁頂部的置頂字幕框！');
+return;
+}
+try {
+const pipWin = await window.documentPictureInPicture.requestWindow({ width: 880, height: 185 });
+[...document.styleSheets].forEach((ss) => {
+try {
+const style = document.createElement('style');
+style.textContent = [...ss.cssRules].map(r => r.cssText).join('');
+pipWin.document.head.appendChild(style);
+} catch (e) {}
+});
+pipWin.document.body.style.margin = '0';
+pipWin.document.body.style.background = '#090a0c';
+pipWin.document.body.style.display = 'flex';
+pipWin.document.body.style.alignItems = 'center';
+subtitleBox.style.border = 'none';
+subtitleBox.style.width = '100%';
+pipWin.document.body.appendChild(subtitleBox);
+
+pipWin.addEventListener('pagehide', () => {
+subtitleBox.style.border = '1px solid #3a414e';
+subtitleWrapper.appendChild(subtitleBox);
+});
+} catch (err) {}
+});
+</script>
+
+</body>
+</html>

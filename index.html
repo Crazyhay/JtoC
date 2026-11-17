@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>YouTube 日語直播三段式字幕機 (穩定版)</title>
-  <style>
+  <title>YouTube 日語直播三段式字幕機 v4</title>
+  <style id="main-style">
     :root {
       --bg: #101216;
       --card: #1b1e24;
@@ -13,6 +13,7 @@
       --polish: #ffd700;
       --text: #eaeaea;
       --sub: #9aa0a6;
+      --font-scale: 1;
     }
     * { box-sizing: border-box; }
     body {
@@ -21,13 +22,13 @@
       font-family: "Microsoft JhengHei UI", "Meiryo UI", sans-serif;
       display: flex; flex-direction: column; align-items: center;
     }
-    .container { width: 100%; max-width: 940px; }
+    .container { width: 100%; max-width: 1000px; }
     h1 { font-size: 18px; margin: 0 0 10px 0; color: var(--accent); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
     .panel {
       background: var(--card); padding: 14px; border-radius: 10px;
       margin-bottom: 12px; border: 1px solid #2d323b;
     }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
     .row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
     .row:last-child { margin-bottom: 0; }
     label { font-size: 12px; color: var(--sub); display: block; margin-bottom: 4px; }
@@ -38,8 +39,8 @@
     textarea { height: 54px; resize: vertical; font-family: inherit; }
     button {
       background: var(--accent); color: #000; border: none;
-      padding: 12px 14px; border-radius: 6px; font-weight: bold;
-      cursor: pointer; font-size: 14px; flex: 1; min-width: 140px;
+      padding: 11px 14px; border-radius: 6px; font-weight: bold;
+      cursor: pointer; font-size: 14px; flex: 1; min-width: 130px;
       touch-action: manipulation;
     }
     button:active { transform: scale(0.98); }
@@ -65,33 +66,56 @@
     .badge.polish { background: rgba(255, 215, 0, 0.15); color: var(--polish); border-color: var(--polish); }
     .badge.error { background: rgba(255, 85, 85, 0.2); color: #ff7777; border-color: #ff5555; }
 
+    /* 字幕顯示區 (大幅放大預設字體，並支援動態比例縮放) */
     #subtitle-wrapper { width: 100%; position: sticky; top: 6px; z-index: 10; }
     #subtitle-box {
-      background: #090a0c; border: 1px solid #3a414e; border-radius: 10px;
-      padding: 14px 16px; min-height: 145px;
-      display: flex; flex-direction: column; justify-content: center;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.65);
+      background: #090a0c; border: 1px solid #3a414e; border-radius: 12px;
+      padding: 18px 22px; min-height: 190px;
+      display: flex; flex-direction: column; justify-content: center; gap: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.75);
     }
-    .sub-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: bold; display: inline-block; margin-bottom: 2px; }
-    .tag-ja { background: #333; color: #ccc; }
-    .tag-gt { background: #1e3a5f; color: #66b2ff; }
+    .sub-tag {
+      font-size: 12px; padding: 3px 7px; border-radius: 4px; margin-right: 8px;
+      font-weight: bold; display: inline-block; vertical-align: middle;
+    }
+    .tag-ja { background: #333; color: #ddd; }
+    .tag-gt { background: #1e3a5f; color: #70c4ff; }
     .tag-ai { background: #4d3d00; color: var(--polish); }
 
-    .ja-line { font-size: 14px; color: #cccccc; margin-bottom: 8px; line-height: 1.4; word-break: break-word; }
-    .zh-draft-line { font-size: 17px; color: #70c4ff; font-weight: bold; margin-bottom: 8px; line-height: 1.4; word-break: break-word; }
-    .zh-polish-line { font-size: 19px; color: var(--polish); font-weight: bold; line-height: 1.4; word-break: break-word; }
+    /* 累積日文區：完整保留未翻譯句子，不截斷 */
+    .ja-line {
+      font-size: calc(18px * var(--font-scale));
+      color: #e0e0e0; line-height: 1.5; word-break: break-word;
+      border-bottom: 1px dashed #262a33; padding-bottom: 6px;
+    }
+    .ja-pending { color: #00ffcc; font-weight: bold; }
+    .ja-prev { color: #888888; font-size: 0.88em; display: block; margin-bottom: 3px; }
+
+    /* Google 初翻區：預設 26px 大字 */
+    .zh-draft-line {
+      font-size: calc(26px * var(--font-scale));
+      color: #66b8ff; font-weight: bold; line-height: 1.45; word-break: break-word;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+
+    /* AI 分流潤飾區：預設 30px 醒目黃金大字 */
+    .zh-polish-line {
+      font-size: calc(30px * var(--font-scale));
+      color: var(--polish); font-weight: bold; line-height: 1.45; word-break: break-word;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    }
 
     .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .history-box {
-      max-height: 220px; overflow-y: auto; font-size: 13px;
+      max-height: 240px; overflow-y: auto; font-size: 14px;
       background: #14161b; padding: 10px; border-radius: 8px; border: 1px solid #262a33;
     }
     .history-item { padding: 8px 0; border-bottom: 1px solid #22262e; }
     .history-item:last-child { border-bottom: none; }
     .h-time { font-size: 11px; color: #666; margin-right: 6px; }
-    .h-ja { color: #999; margin-bottom: 3px; }
-    .h-gt { color: #66b2ff; font-size: 13px; }
-    .h-ai { color: var(--polish); font-weight: bold; font-size: 14px; margin-top: 3px; }
+    .h-ja { color: #aaa; margin-bottom: 4px; }
+    .h-gt { color: #66b2ff; font-size: 15px; font-weight: bold; }
+    .h-ai { color: var(--polish); font-weight: bold; font-size: 16px; margin-top: 4px; }
 
     details summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: bold; margin-bottom: 8px; user-select: none; }
   </style>
@@ -100,15 +124,17 @@
 
 <div class="container">
   <h1>
-    <span>🎙️ 日語直播三段式字幕機 v3</span>
-    <span style="font-size: 12px; color: var(--sub); font-weight: normal;">穩定綁定版</span>
+    <span>🎙️ 日語直播三段式字幕機 v4</span>
+    <span style="font-size: 12px; color: var(--sub); font-weight: normal;">大字幕 + 完整累積日文 + 自動模型切換</span>
   </h1>
 
+  <!-- 即時字幕區 -->
   <div id="subtitle-wrapper">
     <div id="subtitle-box">
       <div class="ja-line">
-        <span class="sub-tag tag-ja">即時日文</span>
-        <span id="jaText">請確認下方已填入 Groq Key，再點橘色按鈕</span>
+        <span class="sub-tag tag-ja">累積日文</span>
+        <span id="jaPrevText" class="ja-prev"></span>
+        <span id="jaText" class="ja-pending">請確認下方已填入 Groq Key，再點橘色或綠色按鈕啟動</span>
       </div>
       <div class="zh-draft-line">
         <span class="sub-tag tag-gt">Google 初翻</span>
@@ -121,11 +147,20 @@
     </div>
   </div>
 
+  <!-- 操作按鈕與字體大小快速調整 -->
   <div class="panel" style="margin-top: 10px;">
     <div class="row">
       <button id="startMicBtn" class="mobile-btn">📱 手機：用麥克風收音開始</button>
       <button id="startTabBtn">💻 電腦：擷取分頁音訊</button>
+      <button id="pipBtn" class="secondary" style="flex:0.6;">❐ 彈出置頂懸浮窗</button>
       <button id="stopBtn" class="danger" disabled>⏹ 停止</button>
+    </div>
+
+    <!-- 字體大小即時縮放滑桿 -->
+    <div class="row" style="background:#14171d; padding:8px 12px; border-radius:6px; margin-top:6px;">
+      <span style="font-size:13px; color:#00ffcc; font-weight:bold;">🔍 字幕字體放大倍率：</span>
+      <input type="range" id="fontScaleSlider" min="0.8" max="2.2" step="0.1" value="1.1" style="flex:1; cursor:pointer;" />
+      <span id="fontScaleVal" style="font-size:13px; font-weight:bold; min-width:45px; text-align:right;">110%</span>
     </div>
 
     <div class="diag-box" id="diagBox">💡 診斷狀態：網頁載入完成，點擊上方按鈕即可啟動。</div>
@@ -143,6 +178,7 @@
     </div>
   </div>
 
+  <!-- 設定面板 -->
   <div class="panel">
     <details open id="settingsDetails">
       <summary>⚙️ 展開 / 收合 API 金鑰與參數設定</summary>
@@ -156,11 +192,11 @@
           <label>2. Gemini API Key (選填)</label>
           <input type="password" id="geminiKeyInput" placeholder="貼上 AIzaSy... 開頭的金鑰" />
         </div>
-        <div style="width: 100%; max-width: 200px;">
+        <div style="width: 100%; max-width: 210px;">
           <label>階段三 AI 潤飾引擎</label>
           <select id="polishEngineSelect">
-            <option value="groq_first">Groq 優先 (推薦)</option>
-            <option value="gemini_first">Gemini 優先</option>
+            <option value="groq_first">Groq 自動選模型 (推薦)</option>
+            <option value="gemini_first">Gemini 優先 (失敗轉 Groq)</option>
           </select>
         </div>
       </div>
@@ -175,7 +211,7 @@
           <input type="number" id="zhIntervalInput" value="13.0" step="1.0" min="5.0" max="30.0" />
         </div>
         <div>
-          <label>✨ 潤飾門檻 (幾次初翻)</label>
+          <label>✨ 潤飾門檻 (累積幾次初翻)</label>
           <input type="number" id="polishBatchInput" value="2" step="1" min="1" max="5" />
         </div>
         <div>
@@ -189,10 +225,12 @@
           </select>
         </div>
         <div>
-          <label>🎵 語氣助詞斷句</label>
-          <select id="toneSplitSelect">
-            <option value="high" selected>高 (依助詞與停頓)</option>
-            <option value="normal">標準</option>
+          <label>🤖 Groq 潤飾模型 (自動備援)</label>
+          <select id="groqModelSelect">
+            <option value="auto" selected>自動偵測帳號可用模型 (最穩)</option>
+            <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (極速通用)</option>
+            <option value="gemma2-9b-it">gemma2-9b-it (日文理解佳)</option>
+            <option value="qwen-qwq-32b">qwen-qwq-32b (中文潤飾強)</option>
           </select>
         </div>
         <div>
@@ -212,8 +250,7 @@
       </div>
 
       <div class="row">
-        <button id="saveBtn" class="secondary">💾 儲存設定</button>
-        <button id="pipBtn" class="secondary">❐ 電腦置頂小窗</button>
+        <button id="saveBtn" class="secondary">💾 儲存所有設定</button>
       </div>
     </details>
   </div>
@@ -235,9 +272,11 @@
   const zhIntervalInput = document.getElementById('zhIntervalInput');
   const polishBatchInput = document.getElementById('polishBatchInput');
   const speakerCountSelect = document.getElementById('speakerCountSelect');
-  const toneSplitSelect = document.getElementById('toneSplitSelect');
+  const groqModelSelect = document.getElementById('groqModelSelect');
   const geminiModelInput = document.getElementById('geminiModelInput');
   const glossaryInput = document.getElementById('glossaryInput');
+  const fontScaleSlider = document.getElementById('fontScaleSlider');
+  const fontScaleVal = document.getElementById('fontScaleVal');
 
   const startTabBtn = document.getElementById('startTabBtn');
   const startMicBtn = document.getElementById('startMicBtn');
@@ -254,6 +293,7 @@
   const badgeGt = document.getElementById('badgeGt');
   const badgeAi = document.getElementById('badgeAi');
 
+  const jaPrevText = document.getElementById('jaPrevText');
   const jaText = document.getElementById('jaText');
   const zhDraftText = document.getElementById('zhDraftText');
   const zhPolishText = document.getElementById('zhPolishText');
@@ -266,6 +306,7 @@
   let analyser = null;
   let isRunning = false;
   let wakeLock = null;
+  let pipWindowRef = null;
 
   let jaTimer = null;
   let gtTimer = null;
@@ -277,12 +318,25 @@
   let draftBufferForAi = [];
   let recentPolishedContext = [];
   let fullTranscriptLog = [];
+  let availableGroqChatModels = [];
 
   function logDiag(msg, isError = false) {
     diagBox.innerText = msg;
     diagBox.style.borderLeftColor = isError ? '#ff5555' : '#00ffcc';
     diagBox.style.color = isError ? '#ff8888' : '#ffd700';
   }
+
+  // 同步調整主視窗與 PiP 懸浮窗的字體大小
+  function applyFontScale(scale) {
+    document.documentElement.style.setProperty('--font-scale', scale);
+    if (pipWindowRef && pipWindowRef.document) {
+      pipWindowRef.document.documentElement.style.setProperty('--font-scale', scale);
+    }
+    fontScaleVal.innerText = Math.round(scale * 100) + '%';
+    localStorage.setItem('yt_pipe_font_scale', scale);
+  }
+
+  fontScaleSlider.addEventListener('input', (e) => applyFontScale(e.target.value));
 
   window.addEventListener('DOMContentLoaded', () => {
     const fields = [
@@ -293,24 +347,25 @@
       ['zhIntervalInput', 'yt_pipe_zh_sec'],
       ['polishBatchInput', 'yt_pipe_polish_batch'],
       ['speakerCountSelect', 'yt_pipe_speakers'],
-      ['toneSplitSelect', 'yt_pipe_tone'],
+      ['groqModelSelect', 'yt_pipe_groq_model'],
       ['geminiModelInput', 'yt_pipe_gemini_model'],
       ['glossaryInput', 'yt_pipe_glossary']
     ];
     fields.forEach(([id, key]) => {
       const val = localStorage.getItem(key);
-      if (val !== null) document.getElementById(id).value = val;
+      if (val !== null && document.getElementById(id)) document.getElementById(id).value = val;
     });
 
-    // 顯式透過 addEventListener 綁定所有按鈕事件（解決手機內聯 onclick 失效問題）
+    const savedScale = localStorage.getItem('yt_pipe_font_scale') || '1.1';
+    fontScaleSlider.value = savedScale;
+    applyFontScale(savedScale);
+
     startMicBtn.addEventListener('click', handleStartMic);
     startTabBtn.addEventListener('click', handleStartTab);
     stopBtn.addEventListener('click', stopPipeline);
     saveBtn.addEventListener('click', handleSaveSettings);
     pipBtn.addEventListener('click', handlePip);
     exportBtn.addEventListener('click', handleExport);
-
-    logDiag('✅ 系統初始化完成，事件繫結成功。請點擊上方按鈕。');
   });
 
   function saveSettings() {
@@ -321,14 +376,39 @@
     localStorage.setItem('yt_pipe_zh_sec', zhIntervalInput.value);
     localStorage.setItem('yt_pipe_polish_batch', polishBatchInput.value);
     localStorage.setItem('yt_pipe_speakers', speakerCountSelect.value);
-    localStorage.setItem('yt_pipe_tone', toneSplitSelect.value);
+    localStorage.setItem('yt_pipe_groq_model', groqModelSelect.value);
     localStorage.setItem('yt_pipe_gemini_model', geminiModelInput.value.trim());
     localStorage.setItem('yt_pipe_glossary', glossaryInput.value);
   }
 
   function handleSaveSettings() {
     saveSettings();
-    logDiag('💾 設定已成功儲存至瀏覽器！');
+    logDiag('💾 設定已成功儲存！');
+  }
+
+  // 自動向 Groq 查詢該帳號目前有權限使用的對話模型清單
+  async function fetchAvailableGroqModels() {
+    const groqKey = groqKeyInput.value.split(',')[0].trim();
+    if (!groqKey) return;
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${groqKey}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const allIds = (data.data || []).map(m => m.id).filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts'));
+      // 優先排序推薦的多語系模型
+      const preferredOrder = ['qwen', 'llama-4', 'llama-3.3', 'llama-3.1', 'gemma2', 'llama3', 'mixtral'];
+      allIds.sort((a, b) => {
+        const idxA = preferredOrder.findIndex(p => a.toLowerCase().includes(p));
+        const idxB = preferredOrder.findIndex(p => b.toLowerCase().includes(p));
+        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+      });
+      availableGroqChatModels = allIds;
+      if (allIds.length > 0) {
+        logDiag(`✅ 已自動偵測到您的 Groq 可用潤飾模型：${allIds.slice(0, 3).join(', ')}`);
+      }
+    } catch (e) {}
   }
 
   async function requestWakeLock() {
@@ -338,20 +418,13 @@
   }
 
   async function handleStartMic() {
-    logDiag('⏳ 正在請求手機麥克風權限...');
     if (!groqKeyInput.value.trim()) {
       settingsDetails.setAttribute('open', 'true');
-      groqKeyInput.focus();
-      logDiag('❌ 尚未填入 Groq API Key！請在下方填入 gsk_... 金鑰。', true);
+      logDiag('❌ 請先填入 Groq API Key！', true);
       return;
     }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      logDiag('❌ 瀏覽器不支援麥克風 API，請確認使用 Chrome/Safari 且為 https 連線。', true);
-      return;
-    }
-
     saveSettings();
+    await fetchAvailableGroqModels();
 
     try {
       try {
@@ -362,10 +435,8 @@
       } catch (e) {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       }
-
       await requestWakeLock();
       if (window.innerWidth < 768) settingsDetails.removeAttribute('open');
-      logDiag('🎧 麥克風已啟動！請說話測試收音強度條。');
       initAudioPipeline(mediaStream, '手機麥克風');
     } catch (err) {
       logDiag(`❌ 取得麥克風失敗: ${err.message}`, true);
@@ -373,17 +444,17 @@
   }
 
   async function handleStartTab() {
-    logDiag('⏳ 正在綁定電腦分頁音訊...');
     if (!groqKeyInput.value.trim()) {
       settingsDetails.setAttribute('open', 'true');
       logDiag('❌ 請先填入 Groq API Key！', true);
       return;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      logDiag('❌ 手機不支援分頁擷取，請使用「手機麥克風收音」。', true);
+      logDiag('❌ 手機不支援分頁擷取，請點左邊橘色的「手機麥克風收音」！', true);
       return;
     }
     saveSettings();
+    await fetchAvailableGroqModels();
 
     try {
       mediaStream = await navigator.mediaDevices.getDisplayMedia({
@@ -398,7 +469,6 @@
         return;
       }
       mediaStream.getVideoTracks().forEach(t => t.stop());
-      logDiag('🎧 分頁音訊綁定成功！');
       initAudioPipeline(new MediaStream(audioTracks), '電腦分頁音訊');
     } catch (err) {
       logDiag(`❌ 分頁擷取失敗: ${err.message}`, true);
@@ -436,7 +506,8 @@
     jaBufferForGt = [];
     draftBufferForAi = [];
 
-    jaText.innerText = `[${sourceLabel}] 聆聽中...`;
+    jaPrevText.innerText = '';
+    jaText.innerText = `[${sourceLabel}] 正在聆聽日語音訊...`;
     badgeJa.className = 'badge active';
     badgeJa.innerText = '1. 日文: 錄音中';
 
@@ -479,6 +550,7 @@
     return { mime: '', ext: 'webm' };
   }
 
+  // Stage 1: 日文聽寫（完整累積顯示，不再洗掉未翻譯句子）
   function startStage1JaLoop(stream) {
     if (!isRunning) return;
     const jaSec = parseFloat(jaIntervalInput.value) || 3.5;
@@ -521,16 +593,14 @@
     } else {
       text = rawText;
     }
-    if (toneSplitSelect.value === 'high') {
-      text = text.replace(/(だよね|ですね|ますね|ましたね|かな|かも|じゃん|でしょ|ますよ|ですよ|だなぁ|だな|わよ|のよ|かい|だい)(?![、。！？\/])/g, '$1、');
-    }
+    text = text.replace(/(だよね|ですね|ますね|ましたね|かな|かも|じゃん|でしょ|ますよ|ですよ|だなぁ|だな|わよ|のよ|かい|だい)(?![、。！？\/])/g, '$1、');
     return text.trim();
   }
 
   async function recognizeJapaneseWithTone(audioBlob, ext) {
     const groqKey = groqKeyInput.value.split(',')[0].trim();
-    const speakerCount = parseInt(speakerCountSelect.value) || 1;
-    const hallucinations = ['ご視聴ありがとうございました', 'ありがとうございました', 'チャンネル登録', '字幕', 'Thank you'];
+    // 過濾 Whisper 空白幻覺詞（包含剛剛截圖出現的 雑談コラボ）
+    const hallucinations = ['ご視聴ありがとうございました', 'ありがとうございました', 'チャンネル登録', '字幕', 'Thank you', '雑談コラボ'];
 
     try {
       badgeJa.className = 'badge active';
@@ -541,9 +611,6 @@
       formData.append('model', 'whisper-large-v3-turbo');
       formData.append('language', 'ja');
       formData.append('response_format', 'verbose_json');
-      if (speakerCount > 1) {
-        formData.append('prompt', '複数人の会話、雑談コラボ配信。相槌や語尾のニュアンスを正確に書き起こす。');
-      }
 
       const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
@@ -561,23 +628,26 @@
 
       if (!rawJa || rawJa.length < 2 || hallucinations.some(h => rawJa.includes(h))) {
         badgeJa.className = 'badge';
-        badgeJa.innerText = '1. 日文: 監聽中';
+        badgeJa.innerText = `1. 日文: 待翻累積 (${jaBufferForGt.length}句)`;
         return;
       }
 
       const formattedJa = formatJapaneseByTone(data.segments, rawJa);
       jaBufferForGt.push(formattedJa);
-      jaText.innerText = jaBufferForGt.slice(-2).join(' ｜ ');
+
+      // 完整顯示本輪所有累積待翻的日文，不截斷！
+      jaText.innerText = jaBufferForGt.join(' ｜ ');
 
       badgeJa.className = 'badge active';
-      badgeJa.innerText = `1. 日文: 已累積 ${jaBufferForGt.length} 句`;
+      badgeJa.innerText = `1. 日文: 待翻累積 (${jaBufferForGt.length}句)`;
     } catch (err) {
       badgeJa.className = 'badge error';
       badgeJa.innerText = '1. 日文: 錯誤';
-      logDiag(`⚠️ Groq 錯誤: ${err.message}`, true);
+      logDiag(`⚠️ Groq 語音錯誤: ${err.message}`, true);
     }
   }
 
+  // Stage 2: Google 初翻（翻譯完成後將剛翻完的日文移至灰色對照行，不瞬間消失）
   function startStage2GtLoop() {
     const zhSec = parseFloat(zhIntervalInput.value) || 13.0;
     gtRemainingSec = zhSec;
@@ -595,6 +665,10 @@
 
       const combinedJa = jaBufferForGt.join(' ');
       jaBufferForGt = [];
+
+      // 把剛送去翻譯的日文保留在上方小字，方便跟剛出來的中文對照
+      jaPrevText.innerText = `[已送翻] ${combinedJa}`;
+      jaText.innerText = '(等待下一句日文...)';
 
       try {
         badgeGt.className = 'badge active';
@@ -623,6 +697,7 @@
     }, zhSec * 1000);
   }
 
+  // Stage 3: AI 深度潤飾（自動輪詢可用模型，徹底解決 model does not exist）
   async function runStage3AiPolish(batch) {
     const speakerCount = parseInt(speakerCountSelect.value) || 4;
     const glossary = glossaryInput.value.trim();
@@ -632,11 +707,11 @@
     const rawGtBlock = batch.map((b, idx) => `[段落${idx + 1} 初翻]: ${b.gt}`).join('\n');
 
     const speakerInstruction = speakerCount > 1
-      ? `目前直播為 **${speakerCount}人交談/連動**，請根據日文語氣助詞自動拆解並標註說話者代號（如 [A]、[B]）。`
-      : `單人直播，請整理為流暢的台灣繁體中文。`;
+      ? `目前直播為 ${speakerCount}人交談/連動，請根據日文語氣助詞、稱呼與對答邏輯，自動拆解並標註說話者代號（如 [A]、[B]）。`
+      : `單人直播，請整理為自然流暢的台灣繁體中文口語。`;
 
-    const systemPrompt = `你是專業直播口譯潤飾專家。請根據日文與初翻潤飾為台灣繁體中文：\n${speakerInstruction}\n【術語表】\n${glossary}\n【前文】\n${contextStr}`;
-    const userPrompt = `${rawJaBlock}\n\n${rawGtBlock}\n\n請輸出潤飾後的繁體中文：`;
+    const systemPrompt = `你是專業的日本直播同步口譯潤飾專家。請根據「日文原文」與「Google 初翻」，修正語音辨識同音錯字與機翻生硬處，輸出自然道地的台灣繁體中文字幕。\n${speakerInstruction}\n嚴格只輸出潤飾後的最終繁體中文台詞，絕對不要加任何思考過程或解釋。\n【術語表】\n${glossary}\n【前文】\n${contextStr}`;
+    const userPrompt = `${rawJaBlock}\n\n${rawGtBlock}\n\n請輸出合併潤飾後的台灣繁體中文：`;
 
     badgeAi.className = 'badge polish';
     badgeAi.innerText = '3. AI潤飾: 處理中...';
@@ -649,11 +724,14 @@
         try {
           polishedText = await callGeminiTextPolish(systemPrompt, userPrompt);
         } catch (e) {
-          polishedText = await callGroqTextPolish(systemPrompt, userPrompt);
+          polishedText = await callGroqWithFallback(systemPrompt, userPrompt);
         }
       } else {
-        polishedText = await callGroqTextPolish(systemPrompt, userPrompt);
+        polishedText = await callGroqWithFallback(systemPrompt, userPrompt);
       }
+
+      // 移除部分推理模型可能輸出的 <think>...</think> 標籤
+      polishedText = polishedText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
       if (polishedText) {
         zhPolishText.innerText = polishedText;
@@ -681,19 +759,52 @@
     }
   }
 
-  async function callGroqTextPolish(sysPrompt, usrPrompt) {
+  // 自動降級重試呼叫 Groq 模型
+  async function callGroqWithFallback(sysPrompt, usrPrompt) {
     const groqKey = groqKeyInput.value.split(',')[0].trim();
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.25,
-        messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: usrPrompt }]
-      })
-    });
-    if (!res.ok) throw new Error((await res.json()).error?.message || res.statusText);
-    return ((await res.json()).choices?.[0]?.message?.content || '').trim();
+    const selected = groqModelSelect.value;
+
+    // 建立候選模型清單
+    let candidates = [];
+    if (selected !== 'auto') candidates.push(selected);
+    if (availableGroqChatModels.length > 0) {
+      candidates.push(...availableGroqChatModels);
+    }
+    candidates.push(
+      'llama-3.1-8b-instant',
+      'gemma2-9b-it',
+      'llama3-8b-8192',
+      'llama3-70b-8192',
+      'qwen-qwq-32b'
+    );
+    // 去重
+    candidates = [...new Set(candidates)];
+
+    let lastError = null;
+    for (const modelId of candidates) {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelId,
+            temperature: 0.25,
+            messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: usrPrompt }]
+          })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error?.message || res.statusText);
+        }
+        const data = await res.json();
+        const content = (data.choices?.[0]?.message?.content || '').trim();
+        if (content) return content;
+      } catch (err) {
+        lastError = err;
+        // 若該模型不存在或無權限，自動繼續嘗試清單中的下一個模型
+      }
+    }
+    throw lastError || new Error('所有候選 Groq 模型皆無法呼叫');
   }
 
   async function callGeminiTextPolish(sysPrompt, usrPrompt) {
@@ -738,26 +849,29 @@
   }
 
   async function handlePip() {
-    if (!('documentPictureInPicture' in window)) return logDiag('⚠️ 手機不支援子母畫面', true);
+    if (!('documentPictureInPicture' in window)) return logDiag('⚠️ 手機不支援子母畫面，請直接看上方大字幕框', true);
     try {
-      const pipWin = await window.documentPictureInPicture.requestWindow({ width: 880, height: 185 });
+      pipWindowRef = await window.documentPictureInPicture.requestWindow({ width: 960, height: 240 });
       [...document.styleSheets].forEach((ss) => {
         try {
           const style = document.createElement('style');
           style.textContent = [...ss.cssRules].map(r => r.cssText).join('');
-          pipWin.document.head.appendChild(style);
+          pipWindowRef.document.head.appendChild(style);
         } catch (e) {}
       });
-      pipWin.document.body.style.margin = '0';
-      pipWin.document.body.style.background = '#090a0c';
-      pipWin.document.body.style.display = 'flex';
-      pipWin.document.body.style.alignItems = 'center';
+      pipWindowRef.document.documentElement.style.setProperty('--font-scale', fontScaleSlider.value);
+      pipWindowRef.document.body.style.margin = '0';
+      pipWindowRef.document.body.style.background = '#090a0c';
+      pipWindowRef.document.body.style.display = 'flex';
+      pipWindowRef.document.body.style.alignItems = 'center';
       subtitleBox.style.border = 'none';
       subtitleBox.style.width = '100%';
-      pipWin.document.body.appendChild(subtitleBox);
-      pipWin.addEventListener('pagehide', () => {
+      pipWindowRef.document.body.appendChild(subtitleBox);
+
+      pipWindowRef.addEventListener('pagehide', () => {
         subtitleBox.style.border = '1px solid #3a414e';
         subtitleWrapper.appendChild(subtitleBox);
+        pipWindowRef = null;
       });
     } catch (err) {}
   }
